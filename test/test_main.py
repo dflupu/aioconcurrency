@@ -124,4 +124,5 @@ async def test_map_with_array():
 
 
 async def return_same(i):
+    await asyncio.sleep(0.01)
     return i

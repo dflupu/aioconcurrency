@@ -15,7 +15,7 @@ def each(seq, coro, concurrency=Infinite, *, discard_results=False):
     if concurrency is not Infinite:
         assert concurrency > 0
         obj_type = isinstance(seq, asyncio.Queue) and _AioEachLimitQueue or _AioEachLimitSeq
-        return obj_type(seq, coro, concurrency, discard_results)
+        return obj_type(seq, coro, concurrency, discard_results=discard_results)
     else:
         obj_type = isinstance(seq, asyncio.Queue) and _AioEachQueue or _AioEachSeq
         return obj_type(seq, coro, discard_results=discard_results)
@@ -197,10 +197,16 @@ class _AioEachLimitQueue(_AioEachLimit):
 class _AioEachSeq(_AioEachLimitSeq):
 
     async def _completion_handler(self):
-        while self._has_next_item():
+        for _ in range(len(self._seq)):
             self._pending += 1
             asyncio.shield(self._run_next())
-            await asyncio.sleep(0)  # Yield
+
+        while True:
+            await self._can_queue_next.wait()
+            self._can_queue_next.clear()
+
+            if self._pending == 0:
+                break
 
 
 class _AioEachQueue(_AioEachLimitQueue):
@@ -210,8 +216,9 @@ class _AioEachQueue(_AioEachLimitQueue):
             self._pending += 1
             asyncio.shield(self._run_next())
 
-            while self._seq.empty():
-                await self._can_yield_result.wait()
+            # We need to make sure that there is something in the queue
+            item = await self._seq.get()
+            await self._seq.put(item)
 
 
 class _AioOutOfItems(Exception):
