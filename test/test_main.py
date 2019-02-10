@@ -111,7 +111,7 @@ async def test_each_with_discard_results():
 async def test_map_limit_with_array():
 
     items = [1, 2, 3]
-    results = await aioconcurrency.map(items, return_same, concurrency_limit=4).results()
+    results = await aioconcurrency.map(items, return_same, concurrency=4).results()
     assert results == items
 
 

@@ -1,6 +1,6 @@
 # aioconcurrency
 
-Run a coroutine with each item in an iterable, optionally limiting concurrency
+Run a coroutine with each item in an iterable, concurrently
 
 ## Install
 
@@ -11,70 +11,71 @@ Run a coroutine with each item in an iterable, optionally limiting concurrency
 ```
 import aioconcurrency
 
-async def f(item):
-	return item * 2
-
 items = [1, 2, 3, 4]
+async def f(item): return item * 2
 
-async for result in aioconcurrency.each(items, f, concurrency_limit=2):
+await aioconcurrency.map(items, f, concurrency=2).results()  # Returns [2, 4, 6, 8]
+
+async for result in aioconcurrency.each(items, f, concurrency=2):
 	print(result)  # Prints 2 4 6 8 in random order
-
-await aioconcurrency.map(items, f, concurrency_limit=2).results()  # Returns [2, 4, 6, 8]
 ```
 
 ## Api
-
-### aioconcurrency.each
-
-Runs the given coroutine concurrently with each item in an iterable. Returns a generator that may be used to iterate over the return values.
-
-##### `items`
-
-An iterable object. If an `asyncio.Queue` is passed `.each` will read from it indefinitely.
-
-##### `coro`
-
-Coroutine to feed each item to.
-
-##### `optional: concurrency_limit`
-
-Maximum concurrent runs of `coro`. Defaults to infinite.
-
-##### `optional: discard_results`
-
-If truthy, discard the return value of `coro`. Defaults to false.
-
-##### `property: wait()`
-
-Coroutine. May be awaited to wait until all items have been processed.
-
-##### `property: processed_count`
-
-The number of items that have been processed so far.
-
 ### aioconcurrency.map
 
-Runs the given coroutine concurrently with each item in an iterable. May be used to obtain a list of the return values in the expected order.
+Runs the given coroutine concurrently with each item in an iterable.
+May be used to obtain a list of the return values in the expected order.
 
-##### `items`
+`items`
 
 An iterable object.
 
-##### `coro`
+`coro`
 
 Coroutine to feed each item to.
 
-##### `optional: concurrency_limit`
+`optional: concurrency`
 
-Maximum concurrent runs of `coro`. Defaults to infinite.
+Number of concurrent runs of `coro`. Defaults to `aioconcurrency.Infinite`.
 
-##### `property: results()`
+`property: results()`
 
-Coroutine. Returns the list of return values.
+Coroutine. Must be awaited to obtain the list of return values.
 
-##### `property: processed_count`
+`property: processed_count`
 
 The number of items that have been processed so far.
+
+### aioconcurrency.each
+
+Runs the given coroutine concurrently with each item in an iterable.
+Returns a generator that may be used to iterate over the return values. The generator yields values as soon as they are available.
+
+`items`
+
+An iterable object. If an `asyncio.Queue` is passed then `.each` will read from it indefinitely.
+
+`coro`
+
+Coroutine to feed each item to.
+
+`optional: concurrency`
+
+Number of concurrent runs of `coro`. Defaults to `aioconcurrency.Infinite`.
+
+`optional: discard_results`
+
+If truthy, discard the return value of `coro`. Defaults to false.
+
+`property: wait()`
+
+Coroutine. May be used to wait until all items have been processed.
+
+`property: processed_count`
+
+The number of items that have been processed so far.
+
+
 
 ## Tests
 

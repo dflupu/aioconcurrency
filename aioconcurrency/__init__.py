@@ -1,19 +1,21 @@
 import asyncio
 
+Infinite = 0
 
-def map(seq, coro, concurrency_limit=None):
-    if concurrency_limit is not None:
-        assert concurrency_limit > 0
-        return _AioMapLimitSeq(seq, coro, concurrency_limit)
+
+def map(seq, coro, concurrency=Infinite):
+    if concurrency is not Infinite:
+        assert concurrency > 0
+        return _AioMapLimitSeq(seq, coro, concurrency)
     else:
         return _AioMapSeq(seq, coro)
 
 
-def each(seq, coro, concurrency_limit=None, *, discard_results=False):
-    if concurrency_limit is not None:
-        assert concurrency_limit > 0
+def each(seq, coro, concurrency=Infinite, *, discard_results=False):
+    if concurrency is not Infinite:
+        assert concurrency > 0
         obj_type = isinstance(seq, asyncio.Queue) and _AioEachLimitQueue or _AioEachLimitSeq
-        return obj_type(seq, coro, concurrency_limit, discard_results)
+        return obj_type(seq, coro, concurrency, discard_results)
     else:
         obj_type = isinstance(seq, asyncio.Queue) and _AioEachQueue or _AioEachSeq
         return obj_type(seq, coro, discard_results=discard_results)
@@ -21,10 +23,10 @@ def each(seq, coro, concurrency_limit=None, *, discard_results=False):
 
 class _AioMapLimitSeq():
 
-    def __init__(self, seq, coro, concurrency_limit=None):
+    def __init__(self, seq, coro, concurrency=None):
         self._seq = seq
         self._coro = coro
-        self._limit = concurrency_limit
+        self._limit = concurrency
 
         self._pending = 0
         self._processed = 0
@@ -99,10 +101,10 @@ class _AioMapSeq(_AioMapLimitSeq):
 
 class _AioEachLimit():
 
-    def __init__(self, seq, coro, concurrency_limit=None, discard_results=False):
+    def __init__(self, seq, coro, concurrency=None, discard_results=False):
         self._seq = seq
         self._coro = coro
-        self._limit = concurrency_limit
+        self._limit = concurrency
         self._discard_results = discard_results
 
         self._completed = asyncio.Queue()
