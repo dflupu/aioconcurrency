@@ -17,14 +17,14 @@ async def f(item): return item * 2
 await aioconcurrency.map(items, f, concurrency=2).results()  # Returns [2, 4, 6, 8]
 
 async for result in aioconcurrency.each(items, f, concurrency=2):
-	print(result)  # Prints 2 4 6 8 in random order
+    print(result)  # Prints 2 4 6 8 in random order
 ```
 
 ## Api
 ### aioconcurrency.map
 
 Runs the given coroutine concurrently with each item in an iterable.
-May be used to obtain a list of the return values in the expected order.
+The list of the return values will be ordered as if the coroutine was ran serially.
 
 `items`
 
