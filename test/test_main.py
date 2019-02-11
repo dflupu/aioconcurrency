@@ -5,6 +5,11 @@ import pytest
 import aioconcurrency
 
 
+async def return_same(i):
+    await asyncio.sleep(0.01)
+    return i
+
+
 @pytest.mark.asyncio
 async def test_each_limit_with_array():
 
@@ -116,6 +121,45 @@ async def test_map_limit_with_array():
 
 
 @pytest.mark.asyncio
+async def test_each_limit_with_empty_array():
+
+    items = []
+    results = []
+
+    async for result in aioconcurrency.each(items, return_same, concurrency=4):
+        results.append(result)
+
+    assert results == items
+
+
+@pytest.mark.asyncio
+async def test_each_with_empty_array():
+
+    items = []
+    results = []
+
+    async for result in aioconcurrency.each(items, return_same):
+        results.append(result)
+
+    assert results == items
+
+
+@pytest.mark.asyncio
+async def test_map_with_empty_array():
+
+    items = []
+    results = await aioconcurrency.map(items, return_same).results()
+    assert results == items
+
+
+@pytest.mark.asyncio
+async def test_map_limit_with_empty_array():
+    items = []
+    results = await aioconcurrency.map(items, return_same, concurrency=4).results()
+    assert results == items
+
+
+@pytest.mark.asyncio
 async def test_map_with_array():
 
     items = [1, 2, 3]
@@ -123,6 +167,50 @@ async def test_map_with_array():
     assert results == items
 
 
-async def return_same(i):
-    await asyncio.sleep(0.01)
-    return i
+@pytest.mark.asyncio
+async def test_each_with_queue_piping_more():
+
+    items_a = [1, 2, 3]
+    items_b = [4, 5, 6, 7]
+    count = len(items_a) + len(items_b)
+
+    items_queue = asyncio.Queue()
+    results = []
+
+    for item in items_a:
+        items_queue.put_nowait(item)
+
+    gen = aioconcurrency.each(items_queue, return_same)
+    await asyncio.sleep(0.1)
+
+    for item in items_b:
+        items_queue.put_nowait(item)
+
+    async for item in gen:
+        results.append(item)
+
+        if len(results) == count:
+            break
+
+    gen.cancel()
+    assert gen.count_processed == count
+    assert sorted(results) == items_a + items_b
+
+
+@pytest.mark.asyncio
+async def test_map_exception_bubbles_up():
+
+    class TestException(Exception):
+        pass
+
+    async def throws(_):
+        raise TestException('test')
+
+    items = [1]
+
+    try:
+        await aioconcurrency.map(items, throws).results()
+    except TestException as ex:
+        assert isinstance(ex, TestException)
+    else:
+        raise Exception('expected throw')

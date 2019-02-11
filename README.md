@@ -21,6 +21,7 @@ async for result in aioconcurrency.each(items, f, concurrency=2):
 ```
 
 ## Api
+
 ### aioconcurrency.map
 
 Runs the given coroutine concurrently with each item in an iterable.
@@ -45,6 +46,10 @@ Coroutine. Must be awaited to obtain the list of return values.
 `property: processed_count`
 
 The number of items that have been processed so far.
+
+`property: cancel()`
+
+Cancels all runs of `coro`.
 
 ### aioconcurrency.each
 
@@ -75,7 +80,9 @@ Coroutine. May be used to wait until all items have been processed.
 
 The number of items that have been processed so far.
 
+`property: cancel()`
 
+Cancels all runs of `coro`.
 
 ## Tests
 

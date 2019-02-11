@@ -33,6 +33,7 @@ class _AioMapLimitSeq():
 
         self._i = 0
         self._results = [None] * len(seq)
+        self._exception = None
 
         self._completion_handler_task = asyncio.ensure_future(self._completion_handler())
         self._can_queue_next = asyncio.Event()
@@ -44,7 +45,14 @@ class _AioMapLimitSeq():
 
     async def results(self):
         await self._completion_handler_task
+
+        if self._exception is not None:
+            raise self._exception
+
         return self._results
+
+    def cancel(self):
+        self._completion_handler_task.cancel()
 
     async def _run_next(self):
         try:
@@ -56,6 +64,8 @@ class _AioMapLimitSeq():
             self._processed += 1
         except _AioOutOfItems:
             pass
+        except Exception as ex:
+            self._exception = ex
 
         self._pending -= 1
         self._can_queue_next.set()
@@ -68,6 +78,9 @@ class _AioMapLimitSeq():
         while self._pending > 0:
             await self._can_queue_next.wait()
             self._can_queue_next.clear()
+
+            if self._exception is not None:
+                break
 
             while self._pending < self._limit and self._has_next_item():
                 self._pending += 1
@@ -110,6 +123,7 @@ class _AioEachLimit():
         self._completed = asyncio.Queue()
         self._pending = 0
         self._processed = 0
+        self._exception = None
 
         self._completion_handler_task = asyncio.ensure_future(self._completion_handler())
         self._can_queue_next = asyncio.Event()
@@ -120,7 +134,13 @@ class _AioEachLimit():
         return self._processed
 
     async def wait(self):
-        return await self._completion_handler_task
+        await self._completion_handler_task
+
+        if self._exception is not None:
+            raise self._exception
+
+    def cancel(self):
+        self._completion_handler_task.cancel()
 
     async def _run_next(self):
         try:
@@ -133,6 +153,8 @@ class _AioEachLimit():
             self._processed += 1
         except _AioOutOfItems:
             pass
+        except Exception as ex:
+            self._exception = ex
 
         self._pending -= 1
         self._can_queue_next.set()
@@ -147,6 +169,9 @@ class _AioEachLimit():
             await self._can_queue_next.wait()
             self._can_queue_next.clear()
 
+            if self._exception is not None:
+                break
+
             while self._pending < self._limit and self._has_next_item():
                 self._pending += 1
                 asyncio.shield(self._run_next())
@@ -156,6 +181,9 @@ class _AioEachLimit():
 
     async def __anext__(self):
         while True:
+            if self._exception is not None:
+                raise self._exception
+
             if not self._completed.empty():
                 return self._completed.get_nowait()
 
@@ -197,6 +225,10 @@ class _AioEachLimitQueue(_AioEachLimit):
 class _AioEachSeq(_AioEachLimitSeq):
 
     async def _completion_handler(self):
+        if len(self._seq) == 0:
+            self._can_yield_result.set()
+            return
+
         for _ in range(len(self._seq)):
             self._pending += 1
             asyncio.shield(self._run_next())
@@ -204,6 +236,9 @@ class _AioEachSeq(_AioEachLimitSeq):
         while True:
             await self._can_queue_next.wait()
             self._can_queue_next.clear()
+
+            if self._exception is not None:
+                break
 
             if self._pending == 0:
                 break
@@ -213,12 +248,21 @@ class _AioEachQueue(_AioEachLimitQueue):
 
     async def _completion_handler(self):
         while self._has_next_item():
-            self._pending += 1
-            asyncio.shield(self._run_next())
+            item = await self._get_next_item()
+            asyncio.shield(self._run_next(item))
 
-            # We need to make sure that there is something in the queue
-            item = await self._seq.get()
-            await self._seq.put(item)
+            if self._exception is not None:
+                break
+
+    async def _run_next(self, item):
+        result = await self._coro(item)
+
+        if not self._discard_results:
+            await self._completed.put(result)
+
+        self._processed += 1
+        self._can_queue_next.set()
+        self._can_yield_result.set()
 
 
 class _AioOutOfItems(Exception):
