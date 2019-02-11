@@ -1,4 +1,4 @@
-# aioconcurrency
+# aioconcurrency [![Build Status](https://travis-ci.org/dflupu/aioconcurrency.svg?branch=master)](https://travis-ci.org/dflupu/aioconcurrency)
 
 Run a coroutine with each item in an iterable, concurrently
 
