@@ -56,15 +56,18 @@ class _AioMapLimitSeq():
     def cancel(self):
         self._completion_handler_task.cancel()
 
-    async def _run_in_executor(self, item):
-        runner = await self._loop.run_in_executor(self._executor, self._coro, item)
-        return await runner
+    async def _run(self, item):
+        if self._executor:
+            runner = await self._loop.run_in_executor(self._executor, self._coro, item)
+            return await runner
+        else:
+            return await self._coro(item)
 
     async def _run_next(self):
         try:
             item_index = self._i
             item = self._get_next_item()
-            result = await self._run_in_executor(item)
+            result = await self._run(item)
 
             self._results[item_index] = result
             self._processed += 1
@@ -158,14 +161,17 @@ class _AioEachLimit():
     def cancel(self):
         self._completion_handler_task.cancel()
 
-    async def _run_in_executor(self, item):
-        runner = await self._loop.run_in_executor(self._executor, self._coro, item)
-        return await runner
+    async def _run(self, item):
+        if self._executor:
+            runner = await self._loop.run_in_executor(self._executor, self._coro, item)
+            return await runner
+        else:
+            return await self._coro(item)
 
     async def _run_next(self):
         try:
             item = await self._get_next_item()
-            result = await self._run_in_executor(item)
+            result = await self._run(item)
 
             if not self._discard_results:
                 await self._completed.put(result)
@@ -275,7 +281,7 @@ class _AioEachQueue(_AioEachLimitQueue):
                 break
 
     async def _run_next(self, item):
-        result = await self._run_in_executor(item)
+        result = await self._run(item)
 
         if not self._discard_results:
             await self._completed.put(result)

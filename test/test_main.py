@@ -230,3 +230,15 @@ async def test_each_limit_with_executor():
 
     assert gen.count_processed == len(items)
     assert sorted(results) == items
+
+
+@pytest.mark.asyncio
+async def test_map_limit_with_executor():
+
+    items = [1, 2, 3, 4, 5, 6, 7]
+    results = []
+
+    pool = ThreadPoolExecutor(10)
+    items = [1, 2, 3]
+    results = await aioconcurrency.map(items, return_same, concurrency=4, executor=pool)
+    assert results == items
