@@ -12,12 +12,14 @@ Run a coroutine with each item in an iterable, concurrently
 import aioconcurrency
 
 items = [1, 2, 3, 4]
-async def f(item): return item * 2
+async def f(item):
+    return item * 2
 
-await aioconcurrency.map(items, f, concurrency=2).results()  # Returns [2, 4, 6, 8]
+async def main():
+    await aioconcurrency.map(items, f, concurrency=2)  # Returns [2, 4, 6, 8]
 
-async for result in aioconcurrency.each(items, f, concurrency=2):
-    print(result)  # Prints 2 4 6 8 in random order
+    async for result in aioconcurrency.each(items, f, concurrency=2):
+        print(result)  # Prints 2 4 6 8 in random order
 ```
 
 ## Api
@@ -25,7 +27,7 @@ async for result in aioconcurrency.each(items, f, concurrency=2):
 ### aioconcurrency.map
 
 Runs the given coroutine concurrently with each item in an iterable.
-The list of the return values will be ordered as if the coroutine was ran serially.
+The list of the return values will be ordered as if ran serially.
 
 `items`
 
@@ -38,18 +40,6 @@ Coroutine to feed each item to.
 `optional: concurrency`
 
 Number of concurrent runs of `coro`. Defaults to `aioconcurrency.Infinite`.
-
-`property: results()`
-
-Coroutine. Must be awaited to obtain the list of return values.
-
-`property: processed_count`
-
-The number of items that have been processed so far.
-
-`property: cancel()`
-
-Cancels all runs of `coro`.
 
 ### aioconcurrency.each
 

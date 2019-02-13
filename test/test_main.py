@@ -116,7 +116,7 @@ async def test_each_with_discard_results():
 async def test_map_limit_with_array():
 
     items = [1, 2, 3]
-    results = await aioconcurrency.map(items, return_same, concurrency=4).results()
+    results = await aioconcurrency.map(items, return_same, concurrency=4)
     assert results == items
 
 
@@ -148,14 +148,14 @@ async def test_each_with_empty_array():
 async def test_map_with_empty_array():
 
     items = []
-    results = await aioconcurrency.map(items, return_same).results()
+    results = await aioconcurrency.map(items, return_same)
     assert results == items
 
 
 @pytest.mark.asyncio
 async def test_map_limit_with_empty_array():
     items = []
-    results = await aioconcurrency.map(items, return_same, concurrency=4).results()
+    results = await aioconcurrency.map(items, return_same, concurrency=4)
     assert results == items
 
 
@@ -163,7 +163,7 @@ async def test_map_limit_with_empty_array():
 async def test_map_with_array():
 
     items = [1, 2, 3]
-    results = await aioconcurrency.map(items, return_same).results()
+    results = await aioconcurrency.map(items, return_same)
     assert results == items
 
 
@@ -209,7 +209,7 @@ async def test_map_exception_bubbles_up():
     items = [1]
 
     try:
-        await aioconcurrency.map(items, throws).results()
+        await aioconcurrency.map(items, throws)
     except TestException as ex:
         assert isinstance(ex, TestException)
     else:

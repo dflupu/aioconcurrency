@@ -6,9 +6,9 @@ Infinite = 0
 def map(seq, coro, concurrency=Infinite):
     if concurrency is not Infinite:
         assert concurrency > 0
-        return _AioMapLimitSeq(seq, coro, concurrency)
+        return _AioMapLimitSeq(seq, coro, concurrency).results()
     else:
-        return _AioMapSeq(seq, coro)
+        return _AioMapSeq(seq, coro).results()
 
 
 def each(seq, coro, concurrency=Infinite, *, discard_results=False):
@@ -266,8 +266,4 @@ class _AioEachQueue(_AioEachLimitQueue):
 
 
 class _AioOutOfItems(Exception):
-    pass
-
-
-class _AioNoConcurrencyLimit():
     pass
