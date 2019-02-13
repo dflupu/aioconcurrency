@@ -28,7 +28,7 @@ class _AioMapLimitSeq():
         self._coro = coro
         self._limit = concurrency
         self._executor = executor
-        self._loop = loop or asyncio.get_running_loop()
+        self._loop = loop or asyncio.get_event_loop()
 
         self._pending = 0
         self._processed = 0
@@ -137,7 +137,7 @@ class _AioEachLimit():
         self._limit = concurrency
         self._discard_results = discard_results
         self._executor = executor
-        self._loop = loop or asyncio.get_running_loop()
+        self._loop = loop or asyncio.get_event_loop()
 
         self._completed = asyncio.Queue()
         self._pending = 0
