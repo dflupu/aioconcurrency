@@ -3,30 +3,32 @@ import asyncio
 Infinite = 0
 
 
-def map(seq, coro, concurrency=Infinite):
+def map(seq, coro, *, concurrency=Infinite, executor=None, loop=None):
     if concurrency is not Infinite:
         assert concurrency > 0
-        return _AioMapLimitSeq(seq, coro, concurrency).results()
+        return _AioMapLimitSeq(seq, coro, concurrency, executor, loop).results()
     else:
-        return _AioMapSeq(seq, coro).results()
+        return _AioMapSeq(seq, coro, Infinite, executor, loop).results()
 
 
-def each(seq, coro, concurrency=Infinite, *, discard_results=False):
+def each(seq, coro, *, concurrency=Infinite, discard_results=False, executor=None, loop=None):
     if concurrency is not Infinite:
         assert concurrency > 0
         obj_type = isinstance(seq, asyncio.Queue) and _AioEachLimitQueue or _AioEachLimitSeq
-        return obj_type(seq, coro, concurrency, discard_results=discard_results)
+        return obj_type(seq, coro, concurrency, discard_results, executor, loop)
     else:
         obj_type = isinstance(seq, asyncio.Queue) and _AioEachQueue or _AioEachSeq
-        return obj_type(seq, coro, discard_results=discard_results)
+        return obj_type(seq, coro, concurrency, discard_results, executor, loop)
 
 
 class _AioMapLimitSeq():
 
-    def __init__(self, seq, coro, concurrency=None):
+    def __init__(self, seq, coro, concurrency=None, executor=None, loop=None):
         self._seq = seq
         self._coro = coro
         self._limit = concurrency
+        self._executor = executor
+        self._loop = loop or asyncio.get_running_loop()
 
         self._pending = 0
         self._processed = 0
@@ -54,11 +56,15 @@ class _AioMapLimitSeq():
     def cancel(self):
         self._completion_handler_task.cancel()
 
+    async def _run_in_executor(self, item):
+        runner = await self._loop.run_in_executor(self._executor, self._coro, item)
+        return await runner
+
     async def _run_next(self):
         try:
             item_index = self._i
             item = self._get_next_item()
-            result = await self._coro(item)
+            result = await self._run_in_executor(item)
 
             self._results[item_index] = result
             self._processed += 1
@@ -114,11 +120,21 @@ class _AioMapSeq(_AioMapLimitSeq):
 
 class _AioEachLimit():
 
-    def __init__(self, seq, coro, concurrency=None, discard_results=False):
+    def __init__(
+            self,
+            seq,
+            coro,
+            concurrency=None,
+            discard_results=False,
+            executor=None,
+            loop=None
+    ):
         self._seq = seq
         self._coro = coro
         self._limit = concurrency
         self._discard_results = discard_results
+        self._executor = executor
+        self._loop = loop or asyncio.get_running_loop()
 
         self._completed = asyncio.Queue()
         self._pending = 0
@@ -142,10 +158,14 @@ class _AioEachLimit():
     def cancel(self):
         self._completion_handler_task.cancel()
 
+    async def _run_in_executor(self, item):
+        runner = await self._loop.run_in_executor(self._executor, self._coro, item)
+        return await runner
+
     async def _run_next(self):
         try:
             item = await self._get_next_item()
-            result = await self._coro(item)
+            result = await self._run_in_executor(item)
 
             if not self._discard_results:
                 await self._completed.put(result)
@@ -255,7 +275,7 @@ class _AioEachQueue(_AioEachLimitQueue):
                 break
 
     async def _run_next(self, item):
-        result = await self._coro(item)
+        result = await self._run_in_executor(item)
 
         if not self._discard_results:
             await self._completed.put(result)

@@ -1,4 +1,5 @@
 import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -16,7 +17,7 @@ async def test_each_limit_with_array():
     items = [1, 2, 3, 4, 5, 6, 7]
     results = []
 
-    gen = aioconcurrency.each(items, return_same, 4)
+    gen = aioconcurrency.each(items, return_same, concurrency=4)
     async for item in gen:
         results.append(item)
 
@@ -34,7 +35,7 @@ async def test_each_limit_with_queue():
     for item in items:
         items_queue.put_nowait(item)
 
-    gen = aioconcurrency.each(items, return_same, 4)
+    gen = aioconcurrency.each(items, return_same, concurrency=4)
     async for item in gen:
         results.append(item)
 
@@ -51,7 +52,7 @@ async def test_each_limit_with_discard_results():
     items = [1, 2, 3, 4, 5, 6, 7]
     results = []
 
-    gen = aioconcurrency.each(items, return_same, 4, discard_results=True)
+    gen = aioconcurrency.each(items, return_same, concurrency=4, discard_results=True)
     await gen.wait()
 
     async for item in gen:
@@ -214,3 +215,18 @@ async def test_map_exception_bubbles_up():
         assert isinstance(ex, TestException)
     else:
         raise Exception('expected throw')
+
+
+@pytest.mark.asyncio
+async def test_each_limit_with_executor():
+
+    items = [1, 2, 3, 4, 5, 6, 7]
+    results = []
+
+    pool = ThreadPoolExecutor(10)
+    gen = aioconcurrency.each(items, return_same, concurrency=4, executor=pool)
+    async for item in gen:
+        results.append(item)
+
+    assert gen.count_processed == len(items)
+    assert sorted(results) == items

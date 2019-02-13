@@ -8,7 +8,7 @@ with open(path.join(this_directory, 'README.md')) as f:
 
 setup(
     name='aioconcurrency',
-    version='0.2.0',
+    version='0.3.0',
     description='Run a coroutine with each item in an iterable, concurrently',
     keywords='asyncio aio each map limit semaphore concurrency generator synchronization',
     long_description=long_description,

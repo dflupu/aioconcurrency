@@ -41,6 +41,14 @@ Coroutine to feed each item to.
 
 Number of concurrent runs of `coro`. Defaults to `aioconcurrency.Infinite`.
 
+`optional: executor`
+
+Can be an instance of ThreadPoolExecutor.
+
+`optional: loop`
+
+The asyncio event loop that will be used.
+
 ### aioconcurrency.each
 
 Runs the given coroutine concurrently with each item in an iterable.
@@ -57,6 +65,14 @@ Coroutine to feed each item to.
 `optional: concurrency`
 
 Number of concurrent runs of `coro`. Defaults to `aioconcurrency.Infinite`.
+
+`optional: executor`
+
+Can be an instance of ThreadPoolExecutor.
+
+`optional: loop`
+
+The asyncio event loop that will be used.
 
 `optional: discard_results`
 
