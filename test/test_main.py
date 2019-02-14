@@ -11,6 +11,10 @@ async def return_same(i):
     return i
 
 
+def return_same_sync(i):
+    return i
+
+
 @pytest.mark.asyncio
 async def test_each_limit_with_array():
 
@@ -241,4 +245,26 @@ async def test_map_limit_with_executor():
     pool = ThreadPoolExecutor(10)
     items = [1, 2, 3]
     results = await aioconcurrency.map(items, return_same, concurrency=4, executor=pool)
+    assert results == items
+
+
+@pytest.mark.asyncio
+async def test_map_with_sync_function():
+
+    items = [1, 2, 3]
+    results = []
+
+    results = await aioconcurrency.map(items, return_same_sync)
+    assert results == items
+
+
+@pytest.mark.asyncio
+async def test_each_with_sync_function():
+
+    items = [1, 2, 3]
+    results = []
+
+    async for result in aioconcurrency.each(items, return_same_sync):
+        results.append(result)
+
     assert results == items
