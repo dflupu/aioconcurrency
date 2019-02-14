@@ -61,10 +61,12 @@ class _AioMapLimitSeq():
             runner = await self._loop.run_in_executor(self._executor, self._coro, item)
             return await runner
         else:
-            if asyncio.iscoroutinefunction(self._coro):
-                return await self._coro(item)
+            coro = self._coro(item)
+
+            if asyncio.iscoroutine(coro):
+                return await coro
             else:
-                return self._coro(item)
+                return coro
 
     async def _run_next(self):
         try:
@@ -169,10 +171,12 @@ class _AioEachLimit():
             runner = await self._loop.run_in_executor(self._executor, self._coro, item)
             return await runner
         else:
-            if asyncio.iscoroutinefunction(self._coro):
-                return await self._coro(item)
+            coro = self._coro(item)
+
+            if asyncio.iscoroutine(coro):
+                return await coro
             else:
-                return self._coro(item)
+                return coro
 
     async def _run_next(self):
         try:
