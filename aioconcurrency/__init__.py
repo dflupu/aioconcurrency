@@ -14,7 +14,13 @@ def map(seq, coro, *, concurrency=Infinite, executor=None, loop=None):
 def each(seq, coro, *, concurrency=Infinite, discard_results=False, executor=None, loop=None):
     if concurrency is not Infinite:
         assert concurrency > 0
-        obj_type = isinstance(seq, asyncio.Queue) and _AioEachLimitQueue or _AioEachLimitSeq
+        if isinstance(seq, asyncio.Queue):
+            obj_type = _AioEachLimitQueue
+        elif hasattr(seq, '__len__'):
+            obj_type = _AioEachLimitSeq
+        else:
+            obj_type = _AioEachLimitIterable
+
         return obj_type(seq, coro, concurrency, discard_results, executor, loop)
     else:
         obj_type = isinstance(seq, asyncio.Queue) and _AioEachQueue or _AioEachSeq
@@ -247,6 +253,29 @@ class _AioEachLimitSeq(_AioEachLimit):
         self._i += 1
 
         return next_item
+
+
+class _AioEachLimitIterable(_AioEachLimit):
+
+    def __init__(self, *args, **kwargs):
+        self._i = 0
+        self._stop_iteration_raised = False
+        self._lock = asyncio.Lock()
+        super().__init__(*args, **kwargs)
+
+    def _has_next_item(self):
+        return not self._stop_iteration_raised
+
+    async def _get_next_item(self):
+        try:
+            async with self._lock:
+                if hasattr(self._seq, '__anext__'):
+                    return await self._seq.__anext__()
+                else:
+                    return self._seq.__next__()
+        except (StopIteration, StopAsyncIteration):
+            self._stop_iteration_raised = True
+            raise _AioOutOfItems
 
 
 class _AioEachLimitQueue(_AioEachLimit):

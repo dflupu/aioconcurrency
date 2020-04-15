@@ -268,3 +268,42 @@ async def test_each_with_sync_function():
         results.append(result)
 
     assert results == items
+
+
+@pytest.mark.asyncio
+async def test_each_limit_with_sync_generator():
+
+    items = [1, 2, 3]
+
+    def item_gen():
+        yield from items
+
+    results = []
+
+    async for result in aioconcurrency.each(item_gen(), return_same, concurrency=2):
+        results.append(result)
+
+    assert results == items
+
+
+@pytest.mark.asyncio
+async def test_each_limit_with_async_generator():
+
+    items = [1, 2, 3]
+
+    class AsyncGen:
+        def __init__(self, items):
+            self._items = items.copy()
+
+        async def __anext__(self):
+            try:
+                return self._items.pop(0)
+            except IndexError:
+                raise StopAsyncIteration
+
+    results = []
+
+    async for result in aioconcurrency.each(AsyncGen(items), return_same, concurrency=2):
+        results.append(result)
+
+    assert results == items
